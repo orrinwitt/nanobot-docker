@@ -54,7 +54,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
     && rm -rf /var/lib/apt/lists/*
 
 # Install Fabric (danielmiessler/fabric) - AI augmentation patterns
-ARG FABRIC_VERSION=v1.4.448
+ARG FABRIC_VERSION=v1.4.452
 RUN curl -sL https://github.com/danielmiessler/Fabric/releases/download/${FABRIC_VERSION}/fabric_Linux_x86_64.tar.gz \
     | tar -xz -C /usr/local/bin fabric \
     && chmod +x /usr/local/bin/fabric
@@ -74,7 +74,7 @@ RUN mkdir -p /root/.config/fabric \
 RUN pip install --no-cache-dir pip-audit ebooklib Pillow opencv-python-headless watchdog ollama lightrag-hku
 
 # Install PinchTab browser automation (v0.8.6)
-ARG PINCHTAB_VERSION=v0.9.1
+ARG PINCHTAB_VERSION=v0.12.0
 RUN mkdir -p /root/.pinchtab/bin/${PINCHTAB_VERSION} \
     && curl -fsSL "https://github.com/pinchtab/pinchtab/releases/download/${PINCHTAB_VERSION}/pinchtab-linux-amd64" \
        -o /root/.pinchtab/bin/${PINCHTAB_VERSION}/pinchtab-linux-amd64 \
