@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Clone nanobot repository (specific version)
-ARG NANOBOT_VERSION=v0.1.5.post2
+ARG NANOBOT_VERSION=v0.2.0
 WORKDIR /build
 RUN git clone --depth 1 --branch ${NANOBOT_VERSION} https://github.com/HKUDS/nanobot.git .
 
