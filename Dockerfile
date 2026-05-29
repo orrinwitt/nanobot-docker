@@ -54,7 +54,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
     && rm -rf /var/lib/apt/lists/*
 
 # Install Fabric (danielmiessler/fabric) - AI augmentation patterns
-ARG FABRIC_VERSION=v1.4.452
+ARG FABRIC_VERSION=v1.4.453
 RUN curl -sL https://github.com/danielmiessler/Fabric/releases/download/${FABRIC_VERSION}/fabric_Linux_x86_64.tar.gz \
     | tar -xz -C /usr/local/bin fabric \
     && chmod +x /usr/local/bin/fabric
