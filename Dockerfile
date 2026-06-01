@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Clone nanobot repository (specific version)
-ARG NANOBOT_VERSION=v0.2.0
+ARG NANOBOT_VERSION=v0.2.1
 WORKDIR /build
 RUN git clone --depth 1 --branch ${NANOBOT_VERSION} https://github.com/HKUDS/nanobot.git .
 
@@ -74,7 +74,7 @@ RUN mkdir -p /root/.config/fabric \
 RUN pip install --no-cache-dir pip-audit ebooklib Pillow opencv-python-headless watchdog ollama lightrag-hku
 
 # Install PinchTab browser automation (v0.8.6)
-ARG PINCHTAB_VERSION=v0.13.1
+ARG PINCHTAB_VERSION=v0.13.2
 RUN mkdir -p /root/.pinchtab/bin/${PINCHTAB_VERSION} \
     && curl -fsSL "https://github.com/pinchtab/pinchtab/releases/download/${PINCHTAB_VERSION}/pinchtab-linux-amd64" \
        -o /root/.pinchtab/bin/${PINCHTAB_VERSION}/pinchtab-linux-amd64 \
