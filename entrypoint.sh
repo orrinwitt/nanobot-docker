@@ -60,15 +60,27 @@ JBP_DIR="/root/.nanobot/workspace/james-blinds-platform"
 JBP_DATA="$JBP_DIR/postgres-data"
 
 if [ -d "$JBP_DIR" ] && [ -d "$JBP_DATA" ]; then
-    # Ensure PostgreSQL cluster uses the persistent data directory on the volume
+    # Ensure PostgreSQL cluster config exists
     if ! pg_lsclusters 2>/dev/null | grep -q "17 main"; then
-        pg_createcluster 17 main --datadir="$JBP_DATA" > /dev/null 2>&1 || true
+        pg_createcluster 17 main > /dev/null 2>&1 || true
     fi
+
+    # ALWAYS repoint the cluster at the persistent data directory on the volume.
+    # pg_createcluster --datadir only works at creation time; after a restart
+    # the config defaults to /var/lib/postgresql/17/main (ephemeral, empty).
+    sed -i "s|^data_directory = .*|data_directory = '$JBP_DATA'|" /etc/postgresql/17/main/postgresql.conf 2>/dev/null || true
 
     # Ensure the postgres user can traverse to the persistent volume path
     chmod o+x /root /root/.nanobot /root/.nanobot/workspace /root/.nanobot/workspace/james-blinds-platform 2>/dev/null || true
     chown -R postgres:postgres "$JBP_DATA" 2>/dev/null || true
     chmod 700 "$JBP_DATA" 2>/dev/null || true
+
+    # Fix pg_hba.conf: use trust for local connections (container-internal only)
+    cat > /etc/postgresql/17/main/pg_hba.conf << 'HBACONF'
+local   all             all                                     trust
+host    all             all             127.0.0.1/32            trust
+host    all             all             ::1/128                 trust
+HBACONF
 
     # Start PostgreSQL if not already running
     if ! pg_isready -q 2>/dev/null; then
