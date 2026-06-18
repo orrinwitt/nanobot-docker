@@ -113,6 +113,19 @@ if [ -d "$JBP_DIR" ] && [ -d "$JBP_DATA" ]; then
             npx tsx prisma/seed.ts > /dev/null 2>&1 || true
     }
 
+    # Auto-sync from Google Drive (fresh data on every restart)
+    # Downloads the current invite-tracker spreadsheet, then runs sync + dedup in background
+    if command -v gws >/dev/null 2>&1 && [ -f "$JBP_DIR/scripts/sync-pg.js" ]; then
+        (
+            cd /tmp \
+            && gws drive files export --params '{"fileId":"1icex17JWdlsDEf8VTW3KtGK1jLmhu4lj4XkU8H26iwg","mimeType":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}' -o invite-tracker.xlsx > /dev/null 2>&1 \
+            && cp /tmp/invite-tracker.xlsx "$JBP_DIR/data/invite-tracker.xlsx" \
+            && cd "$JBP_DIR" \
+            && node scripts/sync-pg.js > /tmp/jbp-sync.log 2>&1 \
+            && python3 scripts/deduplicate.py >> /tmp/jbp-sync.log 2>&1
+        ) || echo "[JBP] Auto-sync failed — see /tmp/jbp-sync.log" >&2 &
+    fi
+
     # Start Next.js dev server on port 8501
     if ! curl -s -o /dev/null -w "%{http_code}" http://localhost:8501/ | grep -q "200"; then
         cd "$JBP_DIR"
