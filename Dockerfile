@@ -22,7 +22,7 @@ WORKDIR /build
 RUN git clone --depth 1 --branch ${NANOBOT_VERSION} https://github.com/HKUDS/nanobot.git .
 
 # Install nanobot and dependencies (regular install, not editable)
-RUN pip install --no-cache-dir .[discord]
+RUN pip install --no-cache-dir .[discord,matrix]
 
 # ============================================
 # Stage 2: Runtime image
