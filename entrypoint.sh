@@ -146,13 +146,4 @@ HBACONF
     fi
 fi
 
-# ── Matrix SAS verification patch ────────────────────────────────────────────
-# matrix-nio 0.25.2 doesn't send m.key.verification.done after MAC exchange;
-# this patch adds it so Element marks the device as verified.
-# Runs before nanobot starts; idempotent (skips if already patched).
-PATCH_SCRIPT="/root/.nanobot/workspace/scripts/patch-matrix-verification.py"
-if [ -f "$PATCH_SCRIPT" ]; then
-    python3 "$PATCH_SCRIPT" > /tmp/matrix-patch.log 2>&1 || true
-fi
-
 exec python -m nanobot "$@"
