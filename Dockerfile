@@ -86,7 +86,7 @@ RUN mkdir -p /root/.config/fabric \
 RUN pip install --no-cache-dir pip-audit ebooklib Pillow opencv-python-headless watchdog ollama lightrag-hku
 
 # Install PinchTab browser automation (v0.8.6)
-ARG PINCHTAB_VERSION=v0.14.0
+ARG PINCHTAB_VERSION=v0.14.1
 RUN mkdir -p /root/.pinchtab/bin/${PINCHTAB_VERSION} \
     && curl -fsSL "https://github.com/pinchtab/pinchtab/releases/download/${PINCHTAB_VERSION}/pinchtab-linux-amd64" \
        -o /root/.pinchtab/bin/${PINCHTAB_VERSION}/pinchtab-linux-amd64 \
