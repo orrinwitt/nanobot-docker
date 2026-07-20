@@ -13,6 +13,6 @@ services:
     ports:
       # Gateway port — connect your chat clients (Telegram, Matrix, Discord) here
       - "18790:18790"
-    # Optional: pass env vars to override config values
-    # environment:
-    #   - NANOBOT_MODEL=glm-5.2:cloud
+    # After first boot, configure nanobot by running:
+    #   docker exec -it nanobot nanobot onboard
+    # ...or by editing config.json on the mounted volume directly.
