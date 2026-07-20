@@ -117,6 +117,10 @@ jobs:
           \`\`\`bash
           docker pull ghcr.io/${IMAGE_NAME}:${IMAGE_TAG}
           \`\`\`
+
+          ### Migration Note
+
+          > **Previously \`ghcr.io/orrinwitt/nanobot-custom\`?** The repo has been renamed to \`nanobot-docker\`. The old image path still works but will no longer receive updates. Please update your pull commands to \`ghcr.io/orrinwitt/nanobot-docker\`.
           EOF
 
           # Create git tag if it doesn't exist
