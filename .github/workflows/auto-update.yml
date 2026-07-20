@@ -15,72 +15,56 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v5
 
-      - name: Check for nanobot updates
-        id: nanobot
+      - name: Check for updates
+        id: check
         run: |
-          CURRENT=$(grep 'ARG NANOBOT_VERSION=' Dockerfile | cut -d= -f2)
-          LATEST=$(curl -sf https://api.github.com/repos/HKUDS/nanobot/releases/latest | jq -r '.tag_name')
-          if [ -z "$LATEST" ]; then
-            echo "Could not fetch latest nanobot release"
-            echo "updated=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          echo "current=${CURRENT} latest=${LATEST}"
-          if [ "$CURRENT" != "$LATEST" ]; then
-            sed -i "s/ARG NANOBOT_VERSION=${CURRENT}/ARG NANOBOT_VERSION=${LATEST}/" Dockerfile
-            echo "updated=true" >> $GITHUB_OUTPUT
-            echo "nanobot_change=${CURRENT} → ${LATEST}" >> $GITHUB_OUTPUT
-          else
-            echo "updated=false" >> $GITHUB_OUTPUT
-          fi
+          UPDATED="false"
+          CHANGES=""
 
-      - name: Check for Fabric updates
-        id: fabric
-        run: |
-          CURRENT=$(grep 'ARG FABRIC_VERSION=' Dockerfile | cut -d= -f2)
-          LATEST=$(curl -sf https://api.github.com/repos/danielmiessler/Fabric/releases/latest | jq -r '.tag_name')
-          if [ -z "$LATEST" ]; then
-            echo "Could not fetch latest Fabric release"
-            echo "updated=false" >> $GITHUB_OUTPUT
-            exit 0
+          # ── nanobot ──────────────────────────────────────────────────
+          NANOBOT_CURRENT=$(grep 'ARG NANOBOT_VERSION=' Dockerfile | cut -d= -f2)
+          NANOBOT_LATEST=$(curl -sf https://api.github.com/repos/HKUDS/nanobot/releases/latest | jq -r '.tag_name')
+          if [ -n "$NANOBOT_LATEST" ] && [ "$NANOBOT_CURRENT" != "$NANOBOT_LATEST" ]; then
+            sed -i "s|ARG NANOBOT_VERSION=${NANOBOT_CURRENT}|ARG NANOBOT_VERSION=${NANOBOT_LATEST}|" Dockerfile
+            UPDATED="true"
+            CHANGES="${CHANGES}nanobot ${NANOBOT_CURRENT} → ${NANOBOT_LATEST}\n"
           fi
-          echo "current=${CURRENT} latest=${LATEST}"
-          if [ "$CURRENT" != "$LATEST" ]; then
-            sed -i "s/ARG FABRIC_VERSION=${CURRENT}/ARG FABRIC_VERSION=${LATEST}/" Dockerfile
-            echo "updated=true" >> $GITHUB_OUTPUT
-            echo "fabric_change=${CURRENT} → ${LATEST}" >> $GITHUB_OUTPUT
-          else
-            echo "updated=false" >> $GITHUB_OUTPUT
-          fi
+          echo "nanobot_change=${NANOBOT_CURRENT} → ${NANOBOT_LATEST}" >> $GITHUB_OUTPUT
 
-      - name: Check for PinchTab updates
-        id: pinchtab
-        run: |
-          CURRENT=$(grep 'ARG PINCHTAB_VERSION=' Dockerfile | cut -d= -f2)
-          LATEST=$(curl -sf https://api.github.com/repos/pinchtab/pinchtab/releases/latest | jq -r '.tag_name')
-          if [ -z "$LATEST" ]; then
-            echo "Could not fetch latest PinchTab release"
-            echo "updated=false" >> $GITHUB_OUTPUT
-            exit 0
+          # ── Fabric ──────────────────────────────────────────────────
+          FABRIC_CURRENT=$(grep 'ARG FABRIC_VERSION=' Dockerfile | cut -d= -f2)
+          FABRIC_LATEST=$(curl -sf https://api.github.com/repos/danielmiessler/Fabric/releases/latest | jq -r '.tag_name')
+          if [ -n "$FABRIC_LATEST" ] && [ "$FABRIC_CURRENT" != "$FABRIC_LATEST" ]; then
+            sed -i "s|ARG FABRIC_VERSION=${FABRIC_CURRENT}|ARG FABRIC_VERSION=${FABRIC_LATEST}|" Dockerfile
+            UPDATED="true"
+            CHANGES="${CHANGES}fabric ${FABRIC_CURRENT} → ${FABRIC_LATEST}\n"
           fi
-          echo "current=${CURRENT} latest=${LATEST}"
-          if [ "$CURRENT" != "$LATEST" ]; then
-            sed -i "s/ARG PINCHTAB_VERSION=${CURRENT}/ARG PINCHTAB_VERSION=${LATEST}/" Dockerfile
-            echo "updated=true" >> $GITHUB_OUTPUT
-            echo "pinchtab_change=${CURRENT} → ${LATEST}" >> $GITHUB_OUTPUT
-          else
-            echo "updated=false" >> $GITHUB_OUTPUT
+          echo "fabric_change=${FABRIC_CURRENT} → ${FABRIC_LATEST}" >> $GITHUB_OUTPUT
+
+          # ── PinchTab ────────────────────────────────────────────────
+          PINCHTAB_CURRENT=$(grep 'ARG PINCHTAB_VERSION=' Dockerfile | cut -d= -f2)
+          PINCHTAB_LATEST=$(curl -sf https://api.github.com/repos/pinchtab/pinchtab/releases/latest | jq -r '.tag_name')
+          if [ -n "$PINCHTAB_LATEST" ] && [ "$PINCHTAB_CURRENT" != "$PINCHTAB_LATEST" ]; then
+            sed -i "s|ARG PINCHTAB_VERSION=${PINCHTAB_CURRENT}|ARG PINCHTAB_VERSION=${PINCHTAB_LATEST}|" Dockerfile
+            UPDATED="true"
+            CHANGES="${CHANGES}pinchtab ${PINCHTAB_CURRENT} → ${PINCHTAB_LATEST}\n"
           fi
+          echo "pinchtab_change=${PINCHTAB_CURRENT} → ${PINCHTAB_LATEST}" >> $GITHUB_OUTPUT
+
+          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
+          echo -e "Changes:\n$CHANGES"
 
       - name: Commit and push if changed
-        if: steps.nanobot.outputs.updated == 'true' || steps.fabric.outputs.updated == 'true' || steps.pinchtab.outputs.updated == 'true'
+        if: steps.check.outputs.updated == 'true'
         run: |
           MSG="Auto-Update:"
-          [ "${{ steps.nanobot.outputs.updated }}" == "true" ] && MSG="$MSG nanobot ${{ steps.nanobot.outputs.nanobot_change }}"
-          [ "${{ steps.fabric.outputs.updated }}" == "true" ] && MSG="$MSG fabric ${{ steps.fabric.outputs.fabric_change }}"
-          [ "${{ steps.pinchtab.outputs.updated }}" == "true" ] && MSG="$MSG pinchtab ${{ steps.pinchtab.outputs.pinchtab_change }}"
+          [ "${{ steps.check.outputs.nanobot_change }}" != " → " ] && MSG="$MSG nanobot ${{ steps.check.outputs.nanobot_change }}"
+          [ "${{ steps.check.outputs.fabric_change }}" != " → " ] && MSG="$MSG fabric ${{ steps.check.outputs.fabric_change }}"
+          [ "${{ steps.check.outputs.pinchtab_change }}" != " → " ] && MSG="$MSG pinchtab ${{ steps.check.outputs.pinchtab_change }}"
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Dockerfile
           git commit -m "$MSG"
           git push
+          echo "Pushed $MSG — build workflow will create the release"

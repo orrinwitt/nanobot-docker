@@ -1,36 +1,36 @@
-# Nanobot Custom Image
+# nanobot-docker
 
-Custom Docker image for nanobot with MCP servers, Google Workspace API access, GitHub CLI, and Nextcloud sync.
+> Unofficial community Docker image for [**nanobot**](https://github.com/HKUDS/nanobot) — the lightweight, open-source AI agent for your tools, chats, and workflows.
 
-## What's Included
+[![Build Status](../../actions/workflows/build.yml/badge.svg)](../../actions/workflows/build.yml)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-| Component | Location | Notes |
-|-----------|----------|-------|
-| nanobot | `/usr/local/lib/python3.12/site-packages/` | Built from source (v0.1.5) |
-| Node.js | `/usr/bin/node` | apt package |
-| npm | `/usr/bin/npm` | apt package |
-| tmux | `/usr/bin/tmux` | apt package |
-| GitHub CLI | `/usr/bin/gh` | apt package |
-| nextcloud-desktop-cmd | `/usr/bin/nextcloudcmd` | apt package |
-| gws | `/usr/bin/gws` | Google Workspace CLI (npm global) |
-| fabric | `/usr/local/bin/fabric` | AI augmentation patterns (danielmiessler/fabric) |
-| pip-audit | `/usr/local/bin/pip-audit` | Python dependency security scanning |
-| watchdog | Python package | Event-driven vault file watching |
-| lightrag-hku | Python package | Vault RAG indexing and querying |
-| ollama | Python package | Ollama client (connects to Ollama server at 192.168.86.88:11434) |
-| ebooklib | Python package | EPUB generation |
-| Pillow | Python package | Image processing (EPUB covers) |
-| mcp-obsidian | npx cache | Run via `npx @mauricio.wolff/mcp-obsidian` |
-| mcp-server-memory | npx cache | Run via `npx @modelcontextprotocol/server-memory` |
-| chromium | `/usr/bin/chromium` | Browser engine for PinchTab automation |
-| pinchtab | `/root/.pinchtab/bin/` | Browser automation server (v0.8.6, auto-starts) |
+## What This Is
 
-## Usage
+This image bundles [nanobot](https://github.com/HKUDS/nanobot) with a set of commonly-needed tools so you can spin up a full-featured AI agent environment with a single `docker pull`. It is **not affiliated with** the nanobot project — all credit for nanobot itself belongs to the [HKUDS team](https://github.com/HKUDS).
+
+### Included Tools
+
+| Component | Purpose |
+|-----------|---------|
+| [nanobot](https://github.com/HKUDS/nanobot) | AI agent framework (built from source) |
+| [Fabric](https://github.com/danielmiessler/fabric) | AI augmentation patterns (257+ pre-downloaded) |
+| [gws](https://github.com/googleworkspace/cli) | Google Workspace CLI (Gmail, Calendar, Drive, Docs, Sheets) |
+| [GitHub CLI](https://cli.github.com/) | `gh` for issues, PRs, Actions, API access |
+| [PinchTab](https://github.com/pinchtab/pinchtab) | Headless browser automation (Chromium-based) |
+| [nextcloudcmd](https://github.com/nextcloud/desktop) | Nextcloud sync client for vault synchronization |
+| MCP servers | Obsidian + Memory (via `npx`, no global install) |
+| tmux | Terminal multiplexer for interactive sessions |
+| pip-audit | Python dependency security scanning |
+| ebooklib / Pillow | EPUB generation and image processing |
+| watchdog / lightrag-hku / ollama | Vault watching, RAG indexing, Ollama client |
+
+## Quick Start
 
 ### Pull
 
 ```bash
-docker pull ghcr.io/orrinwitt/nanobot-custom:latest
+docker pull ghcr.io/orrinwitt/nanobot-docker:latest
 ```
 
 ### Run
@@ -39,14 +39,51 @@ docker pull ghcr.io/orrinwitt/nanobot-custom:latest
 docker run -d \
   --name nanobot \
   -v /path/to/nanobot-data:/root/.nanobot \
-  ghcr.io/orrinwitt/nanobot-custom:latest
+  ghcr.io/orrinwitt/nanobot-docker:latest
 ```
 
-> **Note:** Only `/root/.nanobot` needs to be mounted. All tools are included in the image.
+> Only `/root/.nanobot` needs to be mounted. All tools are included in the image.
 
-## MCP Server Configuration
+### Pinned Versions
 
-MCP servers are run via `npx` (no global install needed, cached automatically):
+```bash
+# Pull a specific nanobot version
+docker pull ghcr.io/orrinwitt/nanobot-docker:v0.2.2
+
+# Pull a verified stable build
+docker pull ghcr.io/orrinwitt/nanobot-docker:v0.2.2-stable
+```
+
+See [Releases](../../releases) for the full version history and changelogs.
+
+## Version Tags
+
+| Tag | Description |
+|-----|-------------|
+| `latest` | Most recent build from `main` |
+| `v0.2.2` | Pinned to nanobot `v0.2.2` |
+| `v0.2.2-stable` | Same as `v0.2.2`, marks a verified stable build |
+| `main` | Latest commit on `main` (unstable) |
+| `<sha>` | Specific commit hash |
+
+## Volume
+
+Everything persists under `/root/.nanobot`:
+
+| Path | Purpose |
+|------|---------|
+| `/root/.nanobot/config.json` | nanobot configuration (providers, models, tools) |
+| `/root/.nanobot/workspace/` | Workspace (skills, memory, vault) |
+| `/root/.nanobot/workspace/secrets/` | Credentials and API keys |
+| `/root/.nanobot/workspace/vault/` | Obsidian vault (optional, for MCP Obsidian + Nextcloud sync) |
+
+See the [nanobot documentation](https://nanobot.wiki) for how to configure providers, models, and tools.
+
+## Tool Configuration
+
+### MCP Servers
+
+MCP servers run via `npx` (cached automatically, no global install). Add them to your `config.json`:
 
 ```json
 {
@@ -67,72 +104,19 @@ MCP servers are run via `npx` (no global install needed, cached automatically):
 }
 ```
 
-## Auto-Updates
+### Fabric (AI Augmentation Patterns)
 
-This image automatically checks for new releases from [HKUDS/nanobot](https://github.com/HKUDS/nanobot) daily:
+257+ patterns are pre-downloaded at build time (no boot-time download delay). Custom patterns persist in your volume at `workspace/skills/fabric/patterns/` and are copied into the image on boot.
 
-- **Schedule**: Daily at 6 AM UTC (1 AM EST)
-- **Process**: Detects new release → updates Dockerfile → builds image → notifies via Telegram
-- **Manual trigger**: Go to Actions → "Auto-Update from Upstream" → Run workflow
+Configure Fabric via `~/.config/fabric/.env` (mount from `secrets/fabric.env`):
 
-### Manual Update
-
-To manually update to a specific version:
-
-1. Update `NANOBOT_VERSION` in `Dockerfile`
-2. Push changes to GitHub
-3. GitHub Actions will automatically build and push the new image
-
-Or build locally:
-
-```bash
-docker build --build-arg NANOBOT_VERSION=v0.1.5 -t ghcr.io/orrinwitt/nanobot-custom:latest .
-docker push ghcr.io/orrinwitt/nanobot-custom:latest
+```env
+OPENAI_API_KEY=your-api-key
+OPENAI_API_BASE_URL=https://your-gateway/api/v1
+DEFAULT_MODEL=your-model
+DEFAULT_VENDOR=OpenAI
+FABRIC_DISABLE_RESPONSES_API=true
 ```
-
-## Volumes
-
-Only `/root/.nanobot` needs to be mounted as a volume. All tools are included in the image.
-
-| Path | Purpose |
-|------|---------|
-| `/root/.nanobot/config.json` | Configuration file |
-| `/root/.nanobot/workspace/` | Workspace (skills, memory, vault) |
-| `/root/.nanobot/workspace/vault/` | Obsidian vault (synced to Nextcloud) |
-| `/root/.nanobot/workspace/secrets/` | Credentials and tokens |
-
-## Nextcloud Sync
-
-The vault is synced to Nextcloud using `nextcloudcmd`:
-
-```bash
-nextcloudcmd --non-interactive --trust \
-  -u 'USERNAME' -p 'PASSWORD' \
-  --path 'NanobotMemory' \
-  /root/.nanobot/workspace/vault \
-  'https://nextcloud.flwitts.us'
-```
-
-## Google Workspace API Access (gws)
-
-The `gws` CLI provides access to Google services (Gmail, Calendar, Tasks, Drive, Docs, Sheets, Slides):
-
-```bash
-# Authenticate
-gws auth login
-
-# Example: list emails
-gws gmail list
-
-# Example: list calendar events
-gws calendar list
-```
-
-See: https://github.com/googleworkspace/cli
-
-## Fabric (AI Augmentation Patterns)
-
-`fabric` provides 257+ AI patterns for text transformation, summarization, analysis, and more:
 
 ```bash
 # List available patterns
@@ -143,78 +127,43 @@ echo "content" | fabric --pattern summarize
 cat file.txt | fabric --pattern extract_wisdom
 ```
 
-### Pattern Storage
-
-| Type | Location | Notes |
-|------|----------|-------|
-| Standard patterns | Baked into image | 257 patterns pre-downloaded at build |
-| Custom patterns | `workspace/skills/fabric/patterns/` | Persisted in volume, copied at boot |
-
-**Benefits:**
-- No boot-time download delay (patterns already in image)
-- Custom patterns persist across container rebuilds
-- Background update check keeps patterns current
-
-### Configuration
-
-Fabric is configured via `~/.config/fabric/.env` (mounted from `/root/.nanobot/workspace/secrets/fabric.env`):
-
-```env
-OPENAI_API_KEY=your-api-key
-OPENAI_API_BASE_URL=https://your-openwebui-instance/api/v1
-DEFAULT_MODEL=anthropic/claude-sonnet-4.6
-DEFAULT_VENDOR=OpenAI
-FABRIC_DISABLE_RESPONSES_API=true
-```
-
-> **Note:** `FABRIC_DISABLE_RESPONSES_API=true` is required for OpenWebUI compatibility (prevents fabric from using the `/responses` endpoint).
-
 See: https://github.com/danielmiessler/fabric
 
-## GitHub CLI (gh)
+### Google Workspace (gws)
 
-The `gh` CLI provides GitHub API access for issues, PRs, Actions, and more:
+The `gws` CLI provides access to Google services. Authenticate by placing your OAuth credentials at `workspace/secrets/gws-auth-user.json` — the entrypoint copies them to the right location on boot.
 
 ```bash
-# Authenticate
+gws auth login
+gws gmail list
+gws calendar list
+gws drive files list
+```
+
+See: https://github.com/googleworkspace/cli
+
+### GitHub CLI (gh)
+
+```bash
 gh auth login
-
-# Example: trigger workflow
+gh issue list
 gh workflow run build.yml
-
-# Example: check workflow status
 gh run list --limit 5
 ```
 
 See: https://cli.github.com/
 
-## PinchTab Browser Automation
+### PinchTab (Browser Automation)
 
-PinchTab provides headless browser automation for navigating websites, taking screenshots, filling forms, and interacting with web pages.
-
-### Status
-
-- **Auto-starts** on container boot (via entrypoint.sh)
-- **Token auth** required — configured in `/root/.pinchtab/config.json`
-- **Container mode**: Uses `PINCHTAB_CHROME_NO_SANDBOX=1` for non-root/container compatibility
-
-### Quick Test
+PinchTab auto-starts on container boot. Token auth is configured via `/root/.pinchtab/config.json` in your volume.
 
 ```bash
+# Quick test
 curl -X POST http://localhost:9867/navigate \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://example.com"}'
 ```
-
-### Service Commands
-
-```bash
-# On the container:
-/root/.nanobot/workspace/scripts/pinchtab-service.sh start|stop|restart|status
-```
-
-### Endpoints
 
 | Endpoint | Method | Description |
 |---------|--------|-------------|
@@ -228,63 +177,47 @@ curl -X POST http://localhost:9867/navigate \
 | `/close` | POST | Close a tab |
 | `/health` | GET | Health check |
 
-### SSRF Whitelist
+See: https://github.com/pinchtab/pinchtab
 
-Local network access (localhost, home network) is controlled via `tools.ssrfWhitelist` in `config.json`:
+### Nextcloud Sync
 
-```json
-{
-  "tools": {
-    "ssrfWhitelist": ["127.0.0.0/8", "::1/128", "192.168.0.0/16"]
-  }
-}
-```
+The vault can be synced to a Nextcloud instance using `nextcloudcmd`. Place your Nextcloud credentials in `secrets/credentials.json` and add a sync script to `workspace/scripts/`.
 
-See: https://github.com/HKUDS/nanobot/releases/tag/v0.1.5
+See: https://github.com/nextcloud/desktop
 
-## Vault RAG (Retrieval-Augmented Generation)
+## Building from Source
 
-The vault is indexed and searchable using LightRAG with Ollama. Ask natural questions about your vault and get synthesized answers drawn from your actual notes.
-
-### How it works
-
-1. **Indexing** — Vault files are chunked, embedded (`qwen3-embedding:8b`), and stored in a knowledge graph + vector database
-2. **Querying** — Your question is embedded, relevant chunks are retrieved, and `qwen3.5:cloud` synthesizes an answer **only from retrieved context** (no hallucination)
-
-### Usage
-
-Trigger phrases in Telegram/Discord:
-- "search my vault for [topic]"
-- "ask my vault about [topic]"
-- "what do my notes say about [topic]"
-
-Or from the command line:
 ```bash
-cd /root/.nanobot/workspace
-python3 skills/vault-rag/query_vault.py "your question"
-python3 skills/vault-rag/query_vault.py --mode mix "thorough question"
+# Build for a specific nanobot version
+docker build --build-arg NANOBOT_VERSION=v0.2.2 -t nanobot-docker .
 
-# Re-index after vault changes
-python3 skills/vault-rag/index_vault.py --reindex
+# Build for latest nanobot release
+docker build -t nanobot-docker .
 ```
 
-### Auto-indexing
+## Auto-Updates
 
-The vault-watchdog automatically re-indexes after each Nextcloud sync, so the index stays current with no manual intervention.
+This repo includes a daily workflow that checks for new releases of:
+- [nanobot](https://github.com/HKUDS/nanobot/releases) (triggers a new versioned release)
+- [Fabric](https://github.com/danielmiessler/Fabric/releases) (rebuilds `latest`)
+- [PinchTab](https://github.com/pinchtab/pinchtab/releases) (rebuilds `latest`)
 
-### Models used
+When a new nanobot version is detected, the workflow:
+1. Updates `NANOBOT_VERSION` in the Dockerfile
+2. Commits and pushes to `main` (triggers a new image build)
+3. Creates a git tag and GitHub Release with a link to the upstream release notes
 
-| Step | Model | Location |
-|------|-------|----------|
-| Embedding | `qwen3-embedding:8b` | Ollama server (GPU) |
-| Entity extraction | `nemotron-3-nano:4b` | Ollama server (GPU, indexing only) |
-| Synthesis | `qwen3.5:cloud` | Ollama server → OpenRouter |
+Manual trigger: Actions → "Auto-Update from Upstream" → Run workflow.
 
-### Query modes
+## License
 
-| Mode | Description |
-|------|-------------|
-| `local` | Graph entity + chunks (default, fast) |
-| `mix` | Combined (most thorough) |
-| `global` | Full graph traversal |
-| `naive` | Pure vector similarity |
+This Docker image configuration is licensed under the **MIT License**. See [LICENSE](LICENSE).
+
+**nanobot** is licensed under the MIT License by [HKUDS](https://github.com/HKUDS). See [their repository](https://github.com/HKUDS/nanobot) for details.
+
+## Acknowledgments
+
+- **[nanobot](https://github.com/HKUDS/nanobot)** by the HKUDS team — the core agent framework
+- **[Fabric](https://github.com/danielmiessler/fabric)** by Daniel Miessler — AI augmentation patterns
+- **[PinchTab](https://github.com/pinchtab/pinchtab)** — headless browser automation
+- **[gws](https://github.com/googleworkspace/cli)** — Google Workspace CLI

@@ -15,12 +15,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # Need full history for changelog in release notes
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -32,12 +34,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract nanobot version from Dockerfile
+      - name: Extract versions from Dockerfile
         id: version
         run: |
           NANOBOT_VERSION=$(grep -oP 'ARG NANOBOT_VERSION=\K[^ ]+' Dockerfile)
-          echo "version=$NANOBOT_VERSION" >> $GITHUB_OUTPUT
-          echo "version=$NANOBOT_VERSION"
+          FABRIC_VERSION=$(grep -oP 'ARG FABRIC_VERSION=\K[^ ]+' Dockerfile)
+          PINCHTAB_VERSION=$(grep -oP 'ARG PINCHTAB_VERSION=\K[^ ]+' Dockerfile)
+          echo "nanobot=$NANOBOT_VERSION" >> $GITHUB_OUTPUT
+          echo "fabric=$FABRIC_VERSION" >> $GITHUB_OUTPUT
+          echo "pinchtab=$PINCHTAB_VERSION" >> $GITHUB_OUTPUT
+          echo "nanobot=$NANOBOT_VERSION fabric=$FABRIC_VERSION pinchtab=$PINCHTAB_VERSION"
 
       - name: Extract metadata
         id: meta
@@ -48,7 +54,8 @@ jobs:
             type=ref,event=branch
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ steps.version.outputs.version }}-stable,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.nanobot }},enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.nanobot }}-stable,enable={{is_default_branch}}
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -58,6 +65,76 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            NANOBOT_VERSION=${{ steps.version.outputs.version }}
+            NANOBOT_VERSION=${{ steps.version.outputs.nanobot }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Create or update GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NANOBOT_VERSION="${{ steps.version.outputs.nanobot }}"
+          FABRIC_VERSION="${{ steps.version.outputs.fabric }}"
+          PINCHTAB_VERSION="${{ steps.version.outputs.pinchtab }}"
+          IMAGE_TAG="${NANOBOT_VERSION}"
+          IMAGE_NAME="${GITHUB_REPOSITORY,,}"  # lowercase for GHCR
+
+          # Get git log since last tag (or last 10 commits if no tags)
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            CHANGES=$(git log --oneline "$LAST_TAG"..HEAD --format='- %s')
+          else
+            CHANGES=$(git log --oneline -10 --format='- %s')
+          fi
+
+          UPSTREAM_URL="https://github.com/HKUDS/nanobot/releases/tag/${NANOBOT_VERSION}"
+
+          # Build release notes
+          cat <<EOF > /tmp/release-notes.md
+          ## nanobot ${NANOBOT_VERSION}
+
+          Bundles [nanobot ${NANOBOT_VERSION}](${UPSTREAM_URL}) from [HKUDS/nanobot](https://github.com/HKUDS/nanobot).
+
+          ### Bundled Versions
+
+          | Component | Version |
+          |-----------|---------|
+          | nanobot | ${NANOBOT_VERSION} |
+          | Fabric | ${FABRIC_VERSION} |
+          | PinchTab | ${PINCHTAB_VERSION} |
+
+          ### Changes Since Last Release
+
+          ${CHANGES}
+
+          ### Upstream Release Notes
+
+          See the [nanobot ${NANOBOT_VERSION} release notes](${UPSTREAM_URL}) for what's new in nanobot itself.
+
+          ### Docker Pull
+
+          \`\`\`bash
+          docker pull ghcr.io/${IMAGE_NAME}:${IMAGE_TAG}
+          \`\`\`
+          EOF
+
+          # Create git tag if it doesn't exist
+          if ! git rev-parse "$NANOBOT_VERSION" >/dev/null 2>&1; then
+            git tag "$NANOBOT_VERSION"
+            git push origin "$NANOBOT_VERSION"
+          fi
+
+          # Create or update release
+          if gh release view "$NANOBOT_VERSION" -R "$GITHUB_REPOSITORY" 2>/dev/null; then
+            echo "Release $NANOBOT_VERSION exists — updating notes"
+            gh release edit "$NANOBOT_VERSION" \
+              --repo "$GITHUB_REPOSITORY" \
+              --notes-file /tmp/release-notes.md
+          else
+            echo "Creating release $NANOBOT_VERSION"
+            gh release create "$NANOBOT_VERSION" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "nanobot ${NANOBOT_VERSION}" \
+              --notes-file /tmp/release-notes.md
+          fi

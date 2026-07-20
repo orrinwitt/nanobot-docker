@@ -1,6 +1,7 @@
-# Nanobot Custom Image
-# Build: docker build -t ghcr.io/orrinwitt/nanobot-custom:latest .
-# Push: docker push ghcr.io/orrinwitt/nanobot-custom:latest
+# nanobot-docker — Unofficial community Docker image for nanobot
+# Upstream: https://github.com/HKUDS/nanobot (MIT)
+# Build: docker build -t ghcr.io/orrinwitt/nanobot-docker:latest .
+# Push: docker push ghcr.io/orrinwitt/nanobot-docker:latest
 
 # ============================================
 # Stage 1: Build nanobot from source
@@ -30,7 +31,6 @@ RUN pip install --no-cache-dir .[discord,matrix]
 FROM python:3.12-slim
 
 # Install runtime dependencies (standard locations)
-# PostgreSQL 17: needed for James Blinds Platform database (data on persistent volume)
 RUN apt-get update && apt-get install -y \
     nodejs \
     npm \
@@ -39,8 +39,6 @@ RUN apt-get update && apt-get install -y \
     curl \
     tmux \
     chromium \
-    postgresql-17 \
-    postgresql-client-17 \
     && rm -rf /var/lib/apt/lists/*
 
 # MCP servers will be run via npx (no global install needed)
@@ -54,9 +52,6 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 
 # Install gws (Google Workspace CLI) via npm
 RUN npm install -g @googleworkspace/cli
-
-# Install psycopg2 for JBP deduplicate.py (sync runs on every boot)
-RUN pip install --no-cache-dir psycopg2-binary
 
 # Install GitHub CLI (gh)
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
