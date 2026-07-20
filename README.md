@@ -43,6 +43,8 @@ docker run -d \
 ```
 
 > Only `/root/.nanobot` needs to be mounted. All tools are included in the image.
+>
+> Replace `/path/to/nanobot-data` with a persistent directory on your host. This is where `config.json`, your workspace, secrets, vault, and any custom scripts (including the optional [startup hook](#custom-startup-hook)) will live.
 
 ### Pinned Versions
 
@@ -81,10 +83,13 @@ See the [nanobot documentation](https://nanobot.wiki) for how to configure provi
 
 ## Custom Startup Hook
 
-The entrypoint checks for `workspace/scripts/startup.sh` on the mounted volume and runs it before starting nanobot. This lets you add custom startup logic — starting databases, syncing files, launching sidecar services — without modifying the image.
+The entrypoint (baked into the image) checks for a user-provided `startup.sh` on the mounted volume and runs it before starting nanobot. This lets you add custom startup logic — starting databases, syncing files, launching sidecar services — without modifying the image.
+
+**Path inside container:** `/root/.nanobot/workspace/scripts/startup.sh`  
+**Path on your host:** `<your-volume>/workspace/scripts/startup.sh` (where `<your-volume>` is the directory you mounted at `/root/.nanobot`)
 
 ```bash
-# Create your startup script on the volume
+# Create your startup script on the volume (using the Quick Start mount path)
 cat > /path/to/nanobot-data/workspace/scripts/startup.sh << 'EOF'
 #!/bin/sh
 # Start a database, sync files, launch services, etc.
@@ -95,7 +100,7 @@ EOF
 chmod +x /path/to/nanobot-data/workspace/scripts/startup.sh
 ```
 
-The script runs with output redirected to `/tmp/startup-hook.log` inside the container. Failures are non-fatal — nanobot will still start even if the script errors.
+The script runs with output redirected to `/tmp/startup-hook.log` inside the container. Failures are non-fatal — nanobot will still start even if the script errors. If the file doesn't exist, the hook is silently skipped.
 
 ## Tool Configuration
 
