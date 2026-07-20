@@ -79,6 +79,24 @@ Everything persists under `/root/.nanobot`:
 
 See the [nanobot documentation](https://nanobot.wiki) for how to configure providers, models, and tools.
 
+## Custom Startup Hook
+
+The entrypoint checks for `workspace/scripts/startup.sh` on the mounted volume and runs it before starting nanobot. This lets you add custom startup logic — starting databases, syncing files, launching sidecar services — without modifying the image.
+
+```bash
+# Create your startup script on the volume
+cat > /path/to/nanobot-data/workspace/scripts/startup.sh << 'EOF'
+#!/bin/sh
+# Start a database, sync files, launch services, etc.
+pg_ctlcluster 17 main start
+nextcloudcmd -u user -p pass /root/.nanobot/workspace/vault https://cloud.example.com
+EOF
+
+chmod +x /path/to/nanobot-data/workspace/scripts/startup.sh
+```
+
+The script runs with output redirected to `/tmp/startup-hook.log` inside the container. Failures are non-fatal — nanobot will still start even if the script errors.
+
 ## Tool Configuration
 
 ### MCP Servers
