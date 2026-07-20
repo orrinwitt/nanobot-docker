@@ -1,0 +1,18 @@
+# Example Docker Compose deployment for nanobot-docker
+# Copy this file, edit the volume path, and run: docker compose up -d
+
+services:
+  nanobot:
+    image: ghcr.io/orrinwitt/nanobot-docker:latest
+    container_name: nanobot
+    restart: unless-stopped
+    volumes:
+      # Mount a persistent directory for config, workspace, secrets, and vault
+      # Everything nanobot needs survives container updates
+      - ./nanobot-data:/root/.nanobot
+    ports:
+      # Gateway port — connect your chat clients (Telegram, Matrix, Discord) here
+      - "18790:18790"
+    # Optional: pass env vars to override config values
+    # environment:
+    #   - NANOBOT_MODEL=glm-5.2:cloud

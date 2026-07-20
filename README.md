@@ -39,12 +39,24 @@ docker pull ghcr.io/orrinwitt/nanobot-docker:latest
 docker run -d \
   --name nanobot \
   -v /path/to/nanobot-data:/root/.nanobot \
+  -p 18790:18790 \
   ghcr.io/orrinwitt/nanobot-docker:latest
 ```
 
 > Only `/root/.nanobot` needs to be mounted. All tools are included in the image.
 >
 > Replace `/path/to/nanobot-data` with a persistent directory on your host. This is where `config.json`, your workspace, secrets, vault, and any custom scripts (including the optional [startup hook](#custom-startup-hook)) will live.
+
+### Docker Compose
+
+An example compose file is included in the repo. The quickest way to deploy:
+
+```bash
+curl -O https://raw.githubusercontent.com/orrinwitt/nanobot-docker/main/docker-compose.example.yml
+docker compose -f docker-compose.example.yml up -d
+```
+
+See [`docker-compose.example.yml`](docker-compose.example.yml) for the full reference.
 
 ### Pinned Versions
 
