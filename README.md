@@ -13,7 +13,7 @@ This image bundles [nanobot](https://github.com/HKUDS/nanobot) with a set of com
 
 | Component | Purpose |
 |-----------|---------|
-| [nanobot](https://github.com/HKUDS/nanobot) | AI agent framework (built from source) |
+| [nanobot](https://github.com/HKUDS/nanobot) | AI agent framework v0.3.0 (installed from PyPI wheel, prebuilt WebUI included) |
 | [Fabric](https://github.com/danielmiessler/fabric) | AI augmentation patterns (257+ pre-downloaded) |
 | [gws](https://github.com/googleworkspace/cli) | Google Workspace CLI (Gmail, Calendar, Drive, Docs, Sheets) |
 | [GitHub CLI](https://cli.github.com/) | `gh` for issues, PRs, Actions, API access |
@@ -62,10 +62,10 @@ See [`docker-compose.example.yml`](docker-compose.example.yml) for the full refe
 
 ```bash
 # Pull a specific nanobot version
-docker pull ghcr.io/orrinwitt/nanobot-docker:v0.2.2
+docker pull ghcr.io/orrinwitt/nanobot-docker:v0.3.0
 
 # Pull a verified stable build
-docker pull ghcr.io/orrinwitt/nanobot-docker:v0.2.2-stable
+docker pull ghcr.io/orrinwitt/nanobot-docker:v0.3.0-stable
 ```
 
 See [Releases](../../releases) for the full version history and changelogs.
@@ -75,8 +75,8 @@ See [Releases](../../releases) for the full version history and changelogs.
 | Tag | Description |
 |-----|-------------|
 | `latest` | Most recent build from `main` |
-| `v0.2.2` | Pinned to nanobot `v0.2.2` |
-| `v0.2.2-stable` | Same as `v0.2.2`, marks a verified stable build |
+| `v0.3.0` | Pinned to nanobot `v0.3.0` |
+| `v0.3.0-stable` | Same as `v0.3.0`, marks a verified stable build |
 | `main` | Latest commit on `main` (unstable) |
 | `<sha>` | Specific commit hash |
 
@@ -224,7 +224,7 @@ See: https://github.com/nextcloud/desktop
 
 ```bash
 # Build for a specific nanobot version
-docker build --build-arg NANOBOT_VERSION=v0.2.2 -t nanobot-docker .
+docker build --build-arg NANOBOT_VERSION=v0.3.0 -t nanobot-docker .
 
 # Build for latest nanobot release
 docker build -t nanobot-docker .

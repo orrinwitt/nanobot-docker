@@ -4,45 +4,19 @@
 # Push: docker push ghcr.io/orrinwitt/nanobot-docker:latest
 
 # ============================================
-# Stage 1: Build nanobot from source
-# ============================================
-FROM python:3.12-slim AS builder
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    gcc \
-    g++ \
-    make \
-    npm \
-    && rm -rf /var/lib/apt/lists/*
-
-# Clone nanobot repository (specific version)
-ARG NANOBOT_VERSION=v0.2.2
-WORKDIR /build
-RUN git clone --depth 1 --branch ${NANOBOT_VERSION} https://github.com/HKUDS/nanobot.git .
-
-# Install nanobot and dependencies (regular install, not editable)
-RUN pip install --no-cache-dir .[discord,matrix]
-
-# ============================================
-# Stage 2: Runtime image
+# Single-stage build — nanobot installed from PyPI wheel
+# (wheel includes prebuilt WebUI, no source build needed)
 # ============================================
 FROM python:3.12-slim
 
-# Install runtime dependencies (standard locations)
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
-    nodejs \
-    npm \
     nextcloud-desktop-cmd \
     git \
     curl \
     tmux \
     chromium \
     && rm -rf /var/lib/apt/lists/*
-
-# MCP servers will be run via npx (no global install needed)
-# npx caches packages in ~/.npm/_npx
 
 # Install Node.js 22 LTS (replaces Debian's older Node 20)
 # Next.js 16 recommends Node 20.9+; Node 22 LTS is current long-term support
@@ -74,22 +48,34 @@ RUN mkdir -p /root/.config/fabric \
     && echo "Patterns pre-downloaded: $(ls /root/.config/fabric/patterns | wc -l)" \
     && rm /root/.config/fabric/.env
 
-# Install pip-audit for dependency security scanning
-# Install ebooklib for EPUB generation
-# Install Pillow for image/covers
-# Install opencv-python-headless for image processing
+# Install nanobot from PyPI wheel (includes prebuilt WebUI)
+# v0.3.0 moved channel deps from pip extras to per-channel manifest.py files;
+# we pre-install Matrix, Discord, and Telegram deps explicitly so they're
+# baked into the image rather than auto-installed at runtime.
+ARG NANOBOT_VERSION=v0.3.0
+RUN pip install --no-cache-dir nanobot-ai==${NANOBOT_VERSION#v} \
+    && pip install --no-cache-dir \
+    "matrix-nio[e2e]>=0.25.2" \
+    "aiohttp>=3.9.0,<4.0.0" \
+    "mistune>=3.0.0,<4.0.0" \
+    "nh3>=0.2.17,<1.0.0" \
+    "discord.py>=2.5.2,<3.0.0" \
+    "python-telegram-bot[socks,webhooks]>=22.6,<23.0" \
+    "socksio>=1.0.0,<2.0.0" \
+    "python-socks[asyncio]>=2.8.0,<3.0.0"
+
+# Install additional Python packages
+# pip-audit: dependency security scanning
+# ebooklib / Pillow / opencv-python-headless: EPUB generation and image processing
+# watchdog / lightrag-hku / ollama: vault watching, RAG indexing, Ollama client
 RUN pip install --no-cache-dir pip-audit ebooklib Pillow opencv-python-headless watchdog ollama lightrag-hku
 
-# Install PinchTab browser automation (v0.8.6)
+# Install PinchTab browser automation
 ARG PINCHTAB_VERSION=v0.15.0
 RUN mkdir -p /root/.pinchtab/bin/${PINCHTAB_VERSION} \
     && curl -fsSL "https://github.com/pinchtab/pinchtab/releases/download/${PINCHTAB_VERSION}/pinchtab-linux-amd64" \
        -o /root/.pinchtab/bin/${PINCHTAB_VERSION}/pinchtab-linux-amd64 \
     && chmod +x /root/.pinchtab/bin/${PINCHTAB_VERSION}/pinchtab-linux-amd64
-
-# Copy nanobot from builder
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Set working directory
 WORKDIR /root/.nanobot
@@ -98,7 +84,7 @@ WORKDIR /root/.nanobot
 ENV PYTHONUNBUFFERED=1
 ENV NODE_PATH=/usr/lib/node_modules
 
-# Match original image: ENTRYPOINT + CMD for default gateway command
+# Entrypoint + CMD for default gateway command
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
