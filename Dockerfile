@@ -52,7 +52,7 @@ RUN mkdir -p /root/.config/fabric \
 # v0.3.0 moved channel deps from pip extras to per-channel manifest.py files;
 # we pre-install Matrix, Discord, and Telegram deps explicitly so they're
 # baked into the image rather than auto-installed at runtime.
-ARG NANOBOT_VERSION=v0.3.0
+ARG NANOBOT_VERSION=v0.3.5
 RUN pip install --no-cache-dir nanobot-ai==${NANOBOT_VERSION#v} \
     && pip install --no-cache-dir \
     "matrix-nio[e2e]>=0.25.2" \
