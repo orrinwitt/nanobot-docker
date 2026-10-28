@@ -97,7 +97,7 @@ jobs:
           fi
 
           # ── Changes: direct repo commits only ──
-          # Daily Auto-Update commits don't build or release images (GITHUB_TOKEN pushes
+          # Daily Auto-Update commits do not build or release images (GITHUB_TOKEN pushes
           # never cascade-trigger workflows), and Build manifest commits are bookkeeping.
           # Their net effect is captured in the version tables — not as changelog noise.
           if [ -n "$LAST_TAG" ]; then
@@ -110,7 +110,10 @@ jobs:
           if [ -n "$CHANGES" ]; then
             CHANGES_BLOCK="$CHANGES"
           else
-            CHANGES_BLOCK="_No direct repository changes since ${LAST_TAG:-the repository's start} — the tables above carry the net version movement._"
+            # note: keep this line free of apostrophes — an unescaped ' inside
+            # ${VAR:-default} starts an unterminated quote in bash
+            if [ -n "$LAST_TAG" ]; then SINCE="$LAST_TAG"; else SINCE="repo start"; fi
+            CHANGES_BLOCK="_No direct repository changes since ${SINCE} — the tables above carry the net version movement._"
           fi
 
           # ── Component table: current ARGs vs what the last release pinned ──
@@ -225,7 +228,7 @@ jobs:
               bundled-versions.json
           fi
 
-          # Commit the manifest as the next build's comparative baseline.
+          # Commit the manifest as the comparative baseline for the next build.
           # (GITHUB_TOKEN pushes don't cascade-trigger workflows — no loop.)
           if [ -n "$(git status --porcelain -- bundled-versions.json)" ]; then
             git config user.name "github-actions[bot]"
