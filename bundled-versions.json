@@ -1,0 +1,35 @@
+{
+  "core": {
+    "nanobot-ai": "0.3.5"
+  },
+  "generated_at": "2026-10-28T15:16:26+00:00",
+  "python_extras": {
+    "Pillow": "12.3.0",
+    "aiohttp": "3.14.3",
+    "discord.py": "2.7.1",
+    "ebooklib": "0.20",
+    "lightrag-hku": "1.5.7",
+    "matrix-nio": "0.26.0",
+    "mistune": "3.3.4",
+    "nh3": "0.3.7",
+    "ollama": "0.6.2",
+    "opencv-python-headless": "5.0.0.93",
+    "pip-audit": "2.10.1",
+    "python-socks": "2.8.2",
+    "python-telegram-bot": "22.8",
+    "socksio": "1.0.0",
+    "watchdog": "6.0.0"
+  },
+  "system": {
+    "chromium": "Chromium 152.0.7977.82 built on Debian GNU/Linux 13 (trixie)",
+    "debian-base": "Debian GNU/Linux 13 (trixie)",
+    "fabric": "1.4.478",
+    "gh": "gh version 2.101.0 (2026-09-15)",
+    "git": "git version 2.47.3",
+    "gws": "gws 0.22.5",
+    "nextcloudcmd": "Nextcloud version 3.16.7-1~deb13u1 (Debian built)",
+    "node": "v22.23.2",
+    "pinchtab": "pinchtab 0.15.2",
+    "tmux": "tmux 3.5a"
+  }
+}

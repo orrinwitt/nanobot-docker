@@ -77,6 +77,10 @@ RUN mkdir -p /root/.pinchtab/bin/${PINCHTAB_VERSION} \
        -o /root/.pinchtab/bin/${PINCHTAB_VERSION}/pinchtab-linux-amd64 \
     && chmod +x /root/.pinchtab/bin/${PINCHTAB_VERSION}/pinchtab-linux-amd64
 
+# Bake bundled-versions manifest into the image (release-notes source of truth)
+COPY scripts/bake-manifest.py /usr/local/share/bake-manifest.py
+RUN python3 /usr/local/share/bake-manifest.py > /usr/local/share/bundled-versions.json
+
 # Set working directory
 WORKDIR /root/.nanobot
 

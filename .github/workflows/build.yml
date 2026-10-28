@@ -22,7 +22,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # Need full history for changelog in release notes
+          fetch-depth: 0  # Need full history for changelog + last-release version diffing
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -62,6 +62,7 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name != 'pull_request' }}  # load for the manifest-extraction step
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -69,44 +70,122 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Extract bundled manifest from image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          IMAGE_REF="ghcr.io/${GITHUB_REPOSITORY,,}:main"
+          docker run --rm --entrypoint cat "$IMAGE_REF" /usr/local/share/bundled-versions.json > /tmp/new-manifest.json
+          cat /tmp/new-manifest.json
+
       - name: Create or update GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NANOBOT_VERSION: ${{ steps.version.outputs.nanobot }}
+          FABRIC_VERSION: ${{ steps.version.outputs.fabric }}
+          PINCHTAB_VERSION: ${{ steps.version.outputs.pinchtab }}
         run: |
-          NANOBOT_VERSION="${{ steps.version.outputs.nanobot }}"
-          FABRIC_VERSION="${{ steps.version.outputs.fabric }}"
-          PINCHTAB_VERSION="${{ steps.version.outputs.pinchtab }}"
           IMAGE_TAG="${NANOBOT_VERSION}"
-          IMAGE_NAME="${GITHUB_REPOSITORY,,}"  # lowercase for GHCR
+          IMAGE_NAME="${GITHUB_REPOSITORY,,}"
 
-          # Get git log since last tag (or last 10 commits if no tags)
+          # ── Last release tag + the component versions pinned at that tag ──
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if [ -n "$LAST_TAG" ]; then
-            CHANGES=$(git log --oneline "$LAST_TAG"..HEAD --format='- %s')
-          else
-            CHANGES=$(git log --oneline -10 --format='- %s')
+            OLD_NANOBOT=$(git show "$LAST_TAG":Dockerfile | grep -oP 'ARG NANOBOT_VERSION=\K[^ ]+' || echo "")
+            OLD_FABRIC=$(git show "$LAST_TAG":Dockerfile | grep -oP 'ARG FABRIC_VERSION=\K[^ ]+' || echo "")
+            OLD_PINCHTAB=$(git show "$LAST_TAG":Dockerfile | grep -oP 'ARG PINCHTAB_VERSION=\K[^ ]+' || echo "")
           fi
+
+          # ── Changes: direct repo commits only ──
+          # Daily Auto-Update commits don't build or release images (GITHUB_TOKEN pushes
+          # never cascade-trigger workflows), and Build manifest commits are bookkeeping.
+          # Their net effect is captured in the version tables — not as changelog noise.
+          if [ -n "$LAST_TAG" ]; then
+            CHANGES=$( { git log "$LAST_TAG"..HEAD --format='%s' \
+              | grep -v '^Auto-Update:' | grep -v '^Build manifest:' ; } | sed 's/^/- /' || true )
+          else
+            CHANGES=$( { git log -10 --format='%s' \
+              | grep -v '^Auto-Update:' | grep -v '^Build manifest:' ; } | sed 's/^/- /' || true )
+          fi
+          if [ -n "$CHANGES" ]; then
+            CHANGES_BLOCK="$CHANGES"
+          else
+            CHANGES_BLOCK="_No direct repository changes since ${LAST_TAG:-the repository's start} — the tables above carry the net version movement._"
+          fi
+
+          # ── Component table: current ARGs vs what the last release pinned ──
+          arrow() { [ "$1" != "$2" ] && echo "$1 → $2" || echo "unchanged"; }
+          C_NANO="—"
+          C_FABRIC="—"
+          C_PINCHTAB="—"
+          if [ -n "$OLD_NANOBOT" ]; then C_NANO=$(arrow "$OLD_NANOBOT" "$NANOBOT_VERSION"); fi
+          if [ -n "$OLD_FABRIC" ]; then C_FABRIC=$(arrow "$OLD_FABRIC" "$FABRIC_VERSION"); fi
+          if [ -n "$OLD_PINCHTAB" ]; then C_PINCHTAB=$(arrow "$OLD_PINCHTAB" "$PINCHTAB_VERSION"); fi
+
+          # ── Bundled-package table: this build's image manifest vs previous build's ──
+          python3 - <<'PYEOF'
+          import json, os
+
+          new_m = json.load(open("/tmp/new-manifest.json"))
+          old_m = None
+          if os.path.exists("bundled-versions.json"):
+              try:
+                  old_m = json.load(open("bundled-versions.json"))
+              except Exception:
+                  old_m = None
+
+          # fabric/pinchtab are ARG-tracked (component table) — skip as duplicate rows here
+          arg_tracked = {"fabric", "pinchtab"}
+
+          def flat(m):
+              out = dict(m.get("python_extras") or {})
+              out.update({k: v for k, v in (m.get("system") or {}).items() if k not in arg_tracked})
+              return out
+
+          rows = []
+          if old_m:
+              old, new = flat(old_m), flat(new_m)
+              for k in sorted(set(old) | set(new)):
+                  if old.get(k) != new.get(k):
+                      frm = old.get(k) if old.get(k) is not None else "—"
+                      to = new.get(k) if new.get(k) is not None else "—"
+                      rows.append("| %s | %s | %s |" % (k, frm, to))
+              if rows:
+                  body = "| Package | Previous build | This build |\n|---------|----------------|------------|\n" + "\n".join(rows)
+              else:
+                  body = "_No changes in bundled packages since the previous build._"
+          else:
+              inv = flat(new_m)
+              rows = ["| %s | %s |" % (k, inv[k] if inv[k] is not None else "—") for k in sorted(inv)]
+              body = "| Package | This build |\n|---------|------------|\n" + "\n".join(rows)
+              body += "\n\n_First manifest of record — full inventory; later builds list deltas only._"
+          open("/tmp/pkg-table.md", "w").write(body + "\n")
+          PYEOF
 
           UPSTREAM_URL="https://github.com/HKUDS/nanobot/releases/tag/${NANOBOT_VERSION}"
 
-          # Build release notes
           cat <<EOF > /tmp/release-notes.md
           ## nanobot ${NANOBOT_VERSION}
 
           Bundles [nanobot ${NANOBOT_VERSION}](${UPSTREAM_URL}) from [HKUDS/nanobot](https://github.com/HKUDS/nanobot).
 
-          ### Bundled Versions
+          ### Bundled Components
 
-          | Component | Version |
-          |-----------|---------|
-          | nanobot | ${NANOBOT_VERSION} |
-          | Fabric | ${FABRIC_VERSION} |
-          | PinchTab | ${PINCHTAB_VERSION} |
+          | Component | Version | Since last release |
+          |-----------|---------|--------------------|
+          | nanobot | ${NANOBOT_VERSION} | ${C_NANO} |
+          | Fabric | ${FABRIC_VERSION} | ${C_FABRIC} |
+          | PinchTab | ${PINCHTAB_VERSION} | ${C_PINCHTAB} |
+
+          ### Bundled Packages
+
+          $(cat /tmp/pkg-table.md)
+
+          The full \`bundled-versions.json\` manifest is attached to this release; the previous build's copy lives in the repo (updated per build).
 
           ### Changes Since Last Release
 
-          ${CHANGES}
+          ${CHANGES_BLOCK}
 
           ### Upstream Release Notes
 
@@ -129,16 +208,31 @@ jobs:
             git push origin "$NANOBOT_VERSION"
           fi
 
-          # Create or update release
+          # Create or update release, attaching this build's manifest
+          cp /tmp/new-manifest.json bundled-versions.json
           if gh release view "$NANOBOT_VERSION" -R "$GITHUB_REPOSITORY" 2>/dev/null; then
             echo "Release $NANOBOT_VERSION exists — updating notes"
             gh release edit "$NANOBOT_VERSION" \
               --repo "$GITHUB_REPOSITORY" \
               --notes-file /tmp/release-notes.md
+            gh release upload "$NANOBOT_VERSION" bundled-versions.json --clobber --repo "$GITHUB_REPOSITORY"
           else
             echo "Creating release $NANOBOT_VERSION"
             gh release create "$NANOBOT_VERSION" \
               --repo "$GITHUB_REPOSITORY" \
               --title "nanobot ${NANOBOT_VERSION}" \
-              --notes-file /tmp/release-notes.md
+              --notes-file /tmp/release-notes.md \
+              bundled-versions.json
+          fi
+
+          # Commit the manifest as the next build's comparative baseline.
+          # (GITHUB_TOKEN pushes don't cascade-trigger workflows — no loop.)
+          if [ -n "$(git status --porcelain -- bundled-versions.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add bundled-versions.json
+            git commit -m "Build manifest: ${NANOBOT_VERSION} (${GITHUB_SHA:0:7})"
+            git push origin main
+          else
+            echo "bundled-versions.json unchanged — no baseline commit"
           fi
