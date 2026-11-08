@@ -3,6 +3,11 @@ name: Build and Push Docker Image
 on:
   push:
     branches: [main]
+    # Docs/CI-config-only changes don't alter the image — skip the rebuild
+    # (release-day pushes always touch Dockerfile, so those still build)
+    paths-ignore:
+      - 'README.md'
+      - '.github/**'
   pull_request:
     branches: [main]
   workflow_dispatch:
