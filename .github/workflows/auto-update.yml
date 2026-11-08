@@ -2,8 +2,9 @@ name: Auto-Update from Upstream
 
 on:
   schedule:
-    - cron: '0 6 * * *'  # Daily at 6 AM UTC
-  workflow_dispatch:       # Manual trigger
+    - cron: '0 11 * * *'    # Daily at 11 AM ET — recent upstream releases (v0.4.0/v0.4.1) landed 6:50–10:55 AM ET
+      timezone: "America/New_York"
+  workflow_dispatch:        # Manual trigger
 
 permissions:
   contents: write
