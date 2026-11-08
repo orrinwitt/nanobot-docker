@@ -26,8 +26,14 @@ jobs:
           NANOBOT_LATEST=$(curl -sf https://api.github.com/repos/HKUDS/nanobot/releases/latest | jq -r '.tag_name')
           if [ -n "$NANOBOT_LATEST" ] && [ "$NANOBOT_CURRENT" != "$NANOBOT_LATEST" ]; then
             sed -i "s|ARG NANOBOT_VERSION=${NANOBOT_CURRENT}|ARG NANOBOT_VERSION=${NANOBOT_LATEST}|" Dockerfile
+            # README version references track the pinned nanobot release in lockstep
+            # (README carries only current-version refs — pull examples, tag table, build example)
+            sed -i "s|${NANOBOT_CURRENT}|${NANOBOT_LATEST}|g" README.md
+            if grep -q "${NANOBOT_CURRENT}" README.md; then
+              echo "::warning::README may still reference ${NANOBOT_CURRENT} — check README version sync"
+            fi
             UPDATED="true"
-            CHANGES="${CHANGES}nanobot ${NANOBOT_CURRENT} → ${NANOBOT_LATEST}\n"
+            CHANGES="${CHANGES}nanobot ${NANOBOT_CURRENT} → ${NANOBOT_LATEST} (README refs synced)\n"
           fi
           echo "nanobot_change=${NANOBOT_CURRENT} → ${NANOBOT_LATEST}" >> $GITHUB_OUTPUT
 
@@ -64,7 +70,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Dockerfile
+          git add Dockerfile README.md
           git commit -m "$MSG"
           git push
           echo "Pushed $MSG — build workflow will create the release"
