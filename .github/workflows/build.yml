@@ -11,6 +11,12 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Create/update the git tag + release after building (push events always release; auto-update passes true)"
+        required: false
+        type: boolean
+        default: false
 
 env:
   REGISTRY: ghcr.io
@@ -76,14 +82,14 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Extract bundled manifest from image
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.create_release == true)
         run: |
           IMAGE_REF="ghcr.io/${GITHUB_REPOSITORY,,}:main"
           docker run --rm --entrypoint cat "$IMAGE_REF" /usr/local/share/bundled-versions.json > /tmp/new-manifest.json
           cat /tmp/new-manifest.json
 
       - name: Create or update GitHub Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.create_release == true)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NANOBOT_VERSION: ${{ steps.version.outputs.nanobot }}
@@ -102,9 +108,9 @@ jobs:
           fi
 
           # ── Changes: direct repo commits only ──
-          # Daily Auto-Update commits do not build or release images (GITHUB_TOKEN pushes
-          # never cascade-trigger workflows), and Build manifest commits are bookkeeping.
-          # Their net effect is captured in the version tables — not as changelog noise.
+          # Auto-Update commits (ARG/README bumps) and Build manifest commits are
+          # bookkeeping — their net effect is captured in the version tables, not
+          # as changelog noise.
           if [ -n "$LAST_TAG" ]; then
             CHANGES=$( { git log "$LAST_TAG"..HEAD --format='%s' \
               | grep -v '^Auto-Update:' | grep -v '^Build manifest:' ; } | sed 's/^/- /' || true )

@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write  # needed to dispatch build.yml below
 
 jobs:
   auto-update:
@@ -73,4 +74,15 @@ jobs:
           git add Dockerfile README.md
           git commit -m "$MSG"
           git push
-          echo "Pushed $MSG — build workflow will create the release"
+          echo "Pushed $MSG"
+      - name: Dispatch build and release
+        if: steps.check.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # GITHUB_TOKEN-triggered events don't cascade-trigger workflows, EXCEPT
+          # workflow_dispatch and repository_dispatch (GitHub changelog 2022-09-08).
+          # This closes the loop: upstream release → bump commit → image build → tag + release.
+          # create_release=true mirrors push-event semantics in build.yml.
+          gh workflow run build.yml --ref main -F create_release=true
+          echo "Dispatched build.yml with create_release=true"
