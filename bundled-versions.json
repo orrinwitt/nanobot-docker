@@ -2,7 +2,7 @@
   "core": {
     "nanobot-ai": "0.4.1"
   },
-  "generated_at": "2026-11-15T20:54:55+00:00",
+  "generated_at": "2026-11-18T22:54:19+00:00",
   "python_extras": {
     "Pillow": "13.0.0",
     "aiohttp": "3.14.5",
@@ -11,9 +11,9 @@
     "lightrag-hku": "1.5.7",
     "matrix-nio": "0.26.0",
     "mistune": "3.4.0",
-    "nh3": "0.3.7",
+    "nh3": "0.3.8",
     "ollama": "0.6.3",
-    "opencv-python-headless": "5.0.0.93",
+    "opencv-python-headless": "5.1.0.95",
     "pip-audit": "2.10.1",
     "python-socks": "2.8.2",
     "python-telegram-bot": "22.8",
@@ -23,7 +23,7 @@
   "system": {
     "chromium": "Chromium 156.0.8078.79 built on Debian GNU/Linux 13 (trixie)",
     "debian-base": "Debian GNU/Linux 13 (trixie)",
-    "fabric": "1.4.576",
+    "fabric": "1.4.578",
     "gh": "gh version 2.103.3 (2026-10-26)",
     "git": "git version 2.47.3",
     "gws": "gws 0.22.5",
