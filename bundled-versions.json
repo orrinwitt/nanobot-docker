@@ -1,8 +1,8 @@
 {
   "core": {
-    "nanobot-ai": "0.4.1"
+    "nanobot-ai": "0.4.2"
   },
-  "generated_at": "2026-11-20T22:33:14+00:00",
+  "generated_at": "2026-11-21T14:09:35+00:00",
   "python_extras": {
     "Pillow": "13.0.0",
     "aiohttp": "3.14.5",
@@ -18,7 +18,7 @@
     "python-socks": "2.8.2",
     "python-telegram-bot": "22.8",
     "socksio": "1.0.0",
-    "watchdog": "7.1.0"
+    "watchdog": "7.1.1"
   },
   "system": {
     "chromium": "Chromium 156.0.8078.79 built on Debian GNU/Linux 13 (trixie)",
